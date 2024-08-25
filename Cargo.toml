@@ -1,6 +1,6 @@
 [package]
 authors = ["vyfor"]
-categories = [""]
+categories = ["compilers", "development-tools", "parser-implementations"]
 description = "Kotlin Language Server (WIP)"
 edition = "2021"
 keywords = ["kotlin", "language", "server", "lsp", "ide"]
