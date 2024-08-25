@@ -1,0 +1,252 @@
+use kotlinite::ast::*;
+
+grammar;
+
+pub Source: Vec<Box<Stmt>> = {
+    <stmts:Stmt*> => stmts,
+};
+
+Terminator: () = {
+    ";" => (),
+    "\n" => (),
+};
+
+Stmt: Box<Stmt> = {
+    VarDecl => Box::new(<>),
+    FunDecl => Box::new(<>),
+    Block => Box::new(<>),
+
+    If => Box::new(<>),
+    While => Box::new(<>),
+    Return => Box::new(<>),
+
+    <e:Expr> Terminator => Box::new(Stmt::ExprStmt(Box::new(e))), // TODO: terminator should be optional for the last statement
+};
+
+// TODO: remove the terminator
+VarDecl: Stmt = {
+    "val" <name:Ident> <ty:(":" <Type>)?> <init:VarInit?> Terminator => 
+        Stmt::VarDecl {
+            mutable: true,
+            name,
+            ty,
+            init: init.map(Box::new),
+        },
+    "var" <name:Ident> <ty:(":" <Type>)?> <init:VarInit?> Terminator => 
+        Stmt::VarDecl {
+            mutable: false,
+            name,
+            ty,
+            init: init.map(Box::new),
+        },
+    "const" "val" <name:Ident> <ty:(":" <Type>)?> <init:VarInit?> Terminator =>
+        Stmt::VarDecl {
+            mutable: true,
+            name,
+            ty,
+            init: init.map(Box::new),
+        },
+};
+
+VarInit: Expr = {
+    "=" <e:Expr> => e,
+    "by" <e:Expr> => e,
+};
+
+FunDecl: Stmt = {
+    "fun" <name:Ident> "(" <params:Comma<Param>> ")" <ty:(":" <Type>)?> <body:Block> =>
+        Stmt::FunDecl {
+            name,
+            params,
+            ty,
+            body: Box::new(body),
+        },
+};
+
+If: Stmt = {
+    "if" "(" <cond:Expr> ")" <then_branch:Block> <else_ifs:ElseIf*> <else_branch:("else" <Block>)?> =>
+        Stmt::If {
+            cond: Box::new(cond),
+            then: Box::new(then_branch),
+            else_ifs,
+            otherwise: else_branch.map(Box::new),
+        },
+};
+
+ElseIf: (Box<Expr>, Box<Stmt>) = {
+    "else" "if" "(" <cond:Expr> ")" <then_branch:Block> => (Box::new(cond), Box::new(then_branch)),
+};
+
+While: Stmt = {
+    "while" "(" <cond:Expr> ")" <body:Block> =>
+        Stmt::While {
+            cond: Box::new(cond),
+            body: Box::new(body),
+        },
+};
+
+Return: Stmt = {
+    "return" <expr:Expr?> ";" =>
+        Stmt::Return(expr.map(Box::new)),
+};
+
+Param: (String, Type) = {
+    <name:Ident> ":" <t:Type> => (name, t),
+};
+
+Block: Stmt = {
+    "{" <stmts:Stmt*> "}" => Stmt::Block(stmts),
+};
+
+Expr: Expr = {
+    <l:Expr> "=" <r:LogicalOr> => Expr::BinaryOp(Box::new(l), BinaryOperator::Assign, Box::new(r)),
+    <l:Expr> "+=" <r:LogicalOr> => Expr::BinaryOp(Box::new(l), BinaryOperator::AddAssign, Box::new(r)),
+    <l:Expr> "-=" <r:LogicalOr> => Expr::BinaryOp(Box::new(l), BinaryOperator::SubtractAssign, Box::new(r)),
+    <l:Expr> "*=" <r:LogicalOr> => Expr::BinaryOp(Box::new(l), BinaryOperator::MultiplyAssign, Box::new(r)),
+    <l:Expr> "/=" <r:LogicalOr> => Expr::BinaryOp(Box::new(l), BinaryOperator::DivideAssign, Box::new(r)),
+    <l:Expr> "%=" <r:LogicalOr> => Expr::BinaryOp(Box::new(l), BinaryOperator::ModuloAssign, Box::new(r)),
+    LogicalOr,
+};
+
+LogicalOr: Expr = {
+    <l:LogicalOr> "||" <r:LogicalAnd> => Expr::BinaryOp(Box::new(l), BinaryOperator::Or, Box::new(r)),
+    LogicalAnd,
+};
+
+LogicalAnd: Expr = {
+    <l:LogicalAnd> "&&" <r:BitwiseXor> => Expr::BinaryOp(Box::new(l), BinaryOperator::And, Box::new(r)),
+    BitwiseXor,
+};
+
+BitwiseXor: Expr = {
+    <l:BitwiseXor> "xor" <r:BitwiseShift> => Expr::BinaryOp(Box::new(l), BinaryOperator::Xor, Box::new(r)),
+    BitwiseShift,
+};
+
+BitwiseShift: Expr = {
+    <l:BitwiseShift> "shl" <r:Additive> => Expr::BinaryOp(Box::new(l), BinaryOperator::Shl, Box::new(r)),
+    <l:BitwiseShift> "shr" <r:Additive> => Expr::BinaryOp(Box::new(l), BinaryOperator::Shr, Box::new(r)),
+    <l:BitwiseShift> "ushr" <r:Additive> => Expr::BinaryOp(Box::new(l), BinaryOperator::UShr, Box::new(r)),
+    Additive,
+};
+
+Additive: Expr = {
+    <l:Additive> "+" <r:Multiplicative> => Expr::BinaryOp(Box::new(l), BinaryOperator::Add, Box::new(r)),
+    <l:Additive> "-" <r:Multiplicative> => Expr::BinaryOp(Box::new(l), BinaryOperator::Subtract, Box::new(r)),
+    Multiplicative,
+};
+
+Multiplicative: Expr = {
+    <l:Multiplicative> "*" <r:Term> => Expr::BinaryOp(Box::new(l), BinaryOperator::Multiply, Box::new(r)),
+    <l:Multiplicative> "/" <r:Term> => Expr::BinaryOp(Box::new(l), BinaryOperator::Divide, Box::new(r)),
+    <l:Multiplicative> "%" <r:Term> => Expr::BinaryOp(Box::new(l), BinaryOperator::Modulo, Box::new(r)),
+    Term,
+};
+
+Term: Expr = {
+    Literal => Expr::Literal(<>),
+    Ident => Expr::Variable(<>),
+    "(" <Expr> ")",
+    <name:Ident> "(" <args:Comma<Expr>> ")" => Expr::FunctionCall(name, args.into_iter().map(Box::new).collect()),
+};
+
+Literal: Literal = {
+    r"-?[0-9]+[uU]?[lL]?" => Literal::Integer,
+    r"-?[0-9]+[fF]" => Literal::Float,
+    r"-?[0-9]+[dD]" => Literal::Float,
+    r"-?[0-9]+\.[0-9]+" => Literal::Float,
+    r"-?[0-9]+\.[0-9]+[fF]" => Literal::Float,
+    r"-?[0-9]+\.[0-9]+[dD]" => Literal::Float,
+    r#""([^"\\]|\\.|([$({})?]))*""# => Literal::String,
+    r#""""([$({})?])*""""# => Literal::String,
+    r#"'.'"# => Literal::Char,
+    "true" => Literal::Boolean,
+    "false" => Literal::Boolean,
+    "null" => Literal::Null,
+    // <expr:Expr> => Literal::Custom(expr) TODO: capture object types
+};
+
+Type: Type = {
+    <t:BaseType> <o:"?"?> => Type {
+        kind: t,
+        nullable: o.is_some(),
+    },
+    "Pair" "<" <k:Type> "," <v:Type> ">" <o:"?"?> => Type {
+        kind: TypeKind::Pair(Box::new(k), Box::new(v)),
+        nullable: o.is_some(),
+    },
+    "Triple" "<" <k:Type> "," <v:Type> "," <w:Type> ">" <o:"?"?> => Type {
+        kind: TypeKind::Triple(Box::new(k), Box::new(v), Box::new(w)),
+        nullable: o.is_some(),
+    },
+    "Array" "<" <t:Type> ">" <o:"?"?> => Type {
+        kind: TypeKind::Array(Box::new(t)),
+        nullable: o.is_some(),
+    },
+    "Set" "<" <t:Type> ">" <o:"?"?> => Type {
+        kind: TypeKind::Set(Box::new(t)),
+        nullable: o.is_some(),
+    },
+    "List" "<" <t:Type> ">" <o:"?"?> => Type {
+        kind: TypeKind::List(Box::new(t)),
+        nullable: o.is_some(),
+    },
+    "Map" "<" <k:Type> "," <v:Type> ">" <o:"?"?> => Type {
+        kind: TypeKind::Map(Box::new(k), Box::new(v)),
+        nullable: o.is_some(),
+    },
+    <name:Ident> <generics:("<" <Comma<Type>> ">")?> <o:"?"?> => {
+        let generics = generics.unwrap_or_default();
+        Type {
+            kind: TypeKind::Custom(name, generics),
+            nullable: o.is_some(),
+        }
+    },
+};
+
+BaseType: TypeKind = {
+    "Boolean" => TypeKind::Boolean,
+    "Byte" => TypeKind::Byte,
+    "UByte" => TypeKind::UByte,
+    "Short" => TypeKind::Short,
+    "UShort" => TypeKind::UShort,
+    "Int" => TypeKind::Int,
+    "UInt" => TypeKind::UInt,
+    "Long" => TypeKind::Long,
+    "ULong" => TypeKind::ULong,
+    "Float" => TypeKind::Float,
+    "Double" => TypeKind::Double,
+    "Char" => TypeKind::Char,
+    "String" => TypeKind::String,
+    "ByteArray" => TypeKind::ByteArray,
+    "UByteArray" => TypeKind::UByteArray,
+    "ShortArray" => TypeKind::ShortArray,
+    "UShortArray" => TypeKind::UShortArray,
+    "IntArray" => TypeKind::IntArray,
+    "UIntArray" => TypeKind::UIntArray,
+    "LongArray" => TypeKind::LongArray,
+    "ULongArray" => TypeKind::ULongArray,
+    "FloatArray" => TypeKind::FloatArray,
+    "DoubleArray" => TypeKind::DoubleArray,
+    "CharArray" => TypeKind::CharArray,
+    "BooleanArray" => TypeKind::BooleanArray,
+    "Range" => TypeKind::Range,
+    "Any" => TypeKind::Any,
+    "Unit" => TypeKind::Unit,
+    "Nothing" => TypeKind::Nothing,
+};
+
+Ident: String = {
+    r"[a-zA-Z_][a-zA-Z0-9_]*" => <>.to_string(),
+};
+
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};

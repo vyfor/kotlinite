@@ -1,0 +1,16 @@
+[package]
+authors = ["vyfor"]
+categories = [""]
+description = "Kotlin Language Server (WIP)"
+edition = "2021"
+keywords = ["kotlin", "language", "server", "lsp", "ide"]
+license = "Apache-2.0"
+name = "kotlinite"
+repository = "https://github.com/vyfor/kotlinite"
+version = "0.0.1"
+
+[build-dependencies]
+lalrpop = "0.20.2"
+
+[dependencies]
+lalrpop-util = { version = "0.20.2", features = ["lexer"] }
