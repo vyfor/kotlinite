@@ -5,6 +5,9 @@ import io.github.vyfor.kotlinite.io.FileRegistry
 import io.github.vyfor.kotlinite.server.manager.KotlinDocumentManager
 import io.github.vyfor.kotlinite.server.manager.KotlinWorkspaceManager
 import io.github.vyfor.kotlinite.util.toURIPath
+import java.util.concurrent.CompletableFuture
+import java.util.logging.Logger
+import kotlin.system.exitProcess
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -20,9 +23,6 @@ import org.eclipse.lsp4j.services.LanguageClient
 import org.eclipse.lsp4j.services.LanguageClientAware
 import org.eclipse.lsp4j.services.LanguageServer
 import org.jetbrains.kotlin.analysis.api.standalone.StandaloneAnalysisAPISession
-import java.util.concurrent.CompletableFuture
-import java.util.logging.Logger
-import kotlin.system.exitProcess
 
 class KotlinLanguageServer : LanguageServer, LanguageClientAware {
   var client: LanguageClient? = null
@@ -40,9 +40,9 @@ class KotlinLanguageServer : LanguageServer, LanguageClientAware {
     logger.info("Initialize requested")
     scope.launch {
       val workspaces =
-        params.workspaceFolders.map { workspace ->
-          workspace.uri.toURIPath()
-        } // todo: resolve modules
+          params.workspaceFolders.map { workspace ->
+            workspace.uri.toURIPath()
+          } // todo: resolve modules
 
       session = buildAnalysisSession(workspaces) // todo: resolve dependencies
       fileRegistry.registerFiles(session!!)
@@ -74,9 +74,7 @@ class KotlinLanguageServer : LanguageServer, LanguageClientAware {
   private val capabilities =
       ServerCapabilities().apply {
         textDocumentSync = Either.forLeft(TextDocumentSyncKind.Full)
-        completionProvider =
-            CompletionOptions(
-                false, listOf(".", ":", "::"))
+        completionProvider = CompletionOptions(false, listOf(".", ":", "::"))
       }
 
   companion object {
@@ -84,5 +82,3 @@ class KotlinLanguageServer : LanguageServer, LanguageClientAware {
     val scope = CoroutineScope(Dispatchers.IO)
   }
 }
-
-

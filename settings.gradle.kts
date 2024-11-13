@@ -1,2 +1,2 @@
-rootProject.name = "kotlinite"
-
+rootProject.name =
+    "kotlinite"

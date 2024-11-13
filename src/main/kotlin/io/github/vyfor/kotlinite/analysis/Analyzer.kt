@@ -1,11 +1,11 @@
 package io.github.vyfor.kotlinite.analysis
 
+import java.nio.file.Path
+import kotlin.io.path.Path
 import org.jetbrains.kotlin.analysis.api.standalone.buildStandaloneAnalysisAPISession
 import org.jetbrains.kotlin.analysis.project.structure.builder.buildKtLibraryModule
 import org.jetbrains.kotlin.analysis.project.structure.builder.buildKtSourceModule
 import org.jetbrains.kotlin.platform.jvm.JvmPlatforms
-import java.nio.file.Path
-import kotlin.io.path.Path
 
 fun buildAnalysisSession(sources: List<Path>, deps: List<Path> = emptyList()) =
     buildStandaloneAnalysisAPISession {

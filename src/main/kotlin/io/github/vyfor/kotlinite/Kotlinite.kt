@@ -9,9 +9,5 @@ fun main(): Unit = runBlocking {
   val server = KotlinLanguageServer()
   val launcher = LSPLauncher.createServerLauncher(server, System.`in`, System.out)
 
-  launch {
-    server.connect(launcher.remoteProxy)
-  }.invokeOnCompletion {
-    launcher.startListening()
-  }
+  launch { server.connect(launcher.remoteProxy) }.invokeOnCompletion { launcher.startListening() }
 }
